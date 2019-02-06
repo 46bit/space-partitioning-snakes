@@ -1,0 +1,13 @@
+pricing:
+  bogof:
+    price: 9
+    pricing_rule:
+      type: buy_one_get_one_free
+  bulk:
+    price: 450
+    pricing_rule:
+      type: bulk_discount
+      order_volume: 3
+      discounted_price: 399
+  fixed:
+    price: 11
