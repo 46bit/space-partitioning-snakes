@@ -13,6 +13,8 @@ import (
 //var randScaleFactor = 200.0
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	// leftX := rand.Float64() * randScaleFactor
 	// topY := rand.Float64() * randScaleFactor
 	// bounds := world.Bounds{
@@ -28,14 +30,25 @@ func main() {
 		BottomY: 100,
 	}
 
-	numberOfCircles := 10000
-
 	start := time.Now()
+	numberOfCircles := 0
 	circles := make([]world.Circle, numberOfCircles)
 	for i := 0; i < numberOfCircles; i++ {
 		circles[i] = randomCircleWithinBounds(bounds)
 	}
 	elapsed := time.Now().Sub(start)
+	log.Println(elapsed)
+
+	start = time.Now()
+	numberOfSnakes := 75
+	snakes := make([][]world.Circle, numberOfSnakes)
+	for i := 0; i < numberOfSnakes; i++ {
+		snakes[i] = randomSnake(uint(rand.Int63n(60)), bounds)
+		for j := 0; j < len(snakes[i]); j++ {
+			circles = append(circles, snakes[i][j])
+		}
+	}
+	elapsed = time.Now().Sub(start)
 	log.Println(elapsed)
 
 	// start = time.Now()
@@ -216,4 +229,33 @@ func randomCircleWithinBounds(bounds world.Bounds) world.Circle {
 			return circle
 		}
 	}
+}
+
+func randomSnake(length uint, bounds world.Bounds) []world.Circle {
+	head := randomCircleWithinBounds(bounds)
+	distance := rand.Float64() * head.Radius * 1.5
+	angle := rand.Float64() * math.Pi
+
+	segments := []world.Circle{head}
+	for i := 0; i < int(length)-1; i++ {
+		offset := world.Point{
+			X: distance * math.Cos(angle),
+			Y: distance * math.Sin(angle),
+		}
+		angle += 0.3 * (rand.Float64() - 0.5)
+
+		segment := world.Circle{
+			ID: rand.Int(),
+			Centre: world.Point{
+				X: segments[i].Centre.X + offset.X,
+				Y: segments[i].Centre.Y + offset.Y,
+			},
+			Radius: head.Radius * 0.95,
+		}
+		if !bounds.Contains(segment) {
+			return randomSnake(length, bounds)
+		}
+		segments = append(segments, segment)
+	}
+	return segments
 }
