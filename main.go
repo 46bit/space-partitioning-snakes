@@ -4,6 +4,7 @@ import (
 	//"encoding/json"
 	"fmt"
 	"github.com/46bit/circle-collision-detection/world"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
@@ -40,7 +41,7 @@ func main() {
 	log.Println(elapsed)
 
 	start = time.Now()
-	numberOfSnakes := 75
+	numberOfSnakes := 200
 	snakes := make([][]world.Circle, numberOfSnakes)
 	for i := 0; i < numberOfSnakes; i++ {
 		snakes[i] = randomSnake(uint(rand.Int63n(60)), bounds)
@@ -138,13 +139,15 @@ func main() {
 	// }
 	// fmt.Println(string(data))
 
-	fmt.Println(`<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">`)
-	for _, c := range circles {
-		fmt.Printf(`  <circle cx="%f" cy="%f" r="%f" style="fill: black; stroke-width: 0.01;" />`, c.Centre.X-bounds.LeftX, c.Centre.Y-bounds.TopY, c.Radius)
-		fmt.Println()
+	for l := 0; l < 10; l++ {
+		s := `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">`
+		s += traversePrintAll(quadtree, bounds, 1, l)
+		s += `</svg>`
+		err := ioutil.WriteFile(fmt.Sprintf("levels-%d.svg", l), []byte(s), 0644)
+		if err != nil {
+			fmt.Errorf(err.Error())
+		}
 	}
-	traversePrintSquares(quadtree, bounds, 1)
-	fmt.Println(`</svg>`)
 }
 
 func traverse(q world.Quadtree) int {
@@ -182,6 +185,31 @@ func traversePrintSquares(q world.Quadtree, bounds world.Bounds, depth int) {
 			traversePrintSquares(t, bounds, depth+1)
 		}
 	}
+}
+
+func traversePrintAll(q world.Quadtree, bounds world.Bounds, depth, maxDepth int) string {
+	if maxDepth < 1 {
+		return ""
+	}
+	s := fmt.Sprintf(
+		`  <rect x="%f" y="%f" width="%f" height="%f" style="fill: transparent; stroke: red; stroke-width: %f;" />`,
+		q.Bounds.LeftX-bounds.LeftX,
+		q.Bounds.TopY-bounds.TopY,
+		q.Bounds.Width(),
+		q.Bounds.Height(),
+		1/float64(depth),
+	)
+	s += "\n"
+	for _, c := range q.Circles {
+		s += fmt.Sprintf(`  <circle cx="%f" cy="%f" r="%f" style="fill: black; stroke-width: 0.01;" />`, c.Centre.X-bounds.LeftX, c.Centre.Y-bounds.TopY, c.Radius)
+		s += "\n"
+	}
+	if q.Subtrees != nil {
+		for _, t := range *q.Subtrees {
+			s += traversePrintAll(t, bounds, depth+1, maxDepth-1)
+		}
+	}
+	return s
 }
 
 func computeComputations(q world.Quadtree, parentCircles []world.Circle) int {
