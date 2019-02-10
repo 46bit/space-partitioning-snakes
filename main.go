@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	//"encoding/json"
 	"fmt"
 	"github.com/46bit/circle-collision-detection/world"
 	"log"
@@ -10,17 +10,25 @@ import (
 	"time"
 )
 
+//var randScaleFactor = 200.0
+
 func main() {
-	leftX := rand.Float64()
-	topY := rand.Float64()
+	// leftX := rand.Float64() * randScaleFactor
+	// topY := rand.Float64() * randScaleFactor
+	// bounds := world.Bounds{
+	// 	LeftX:   leftX,
+	// 	RightX:  leftX + math.Abs(rand.Float64()*randScaleFactor),
+	// 	TopY:    topY,
+	// 	BottomY: topY + math.Abs(rand.Float64()*randScaleFactor),
+	// }
 	bounds := world.Bounds{
-		LeftX:   leftX,
-		RightX:  leftX + math.Abs(rand.Float64()),
-		TopY:    topY,
-		BottomY: topY + math.Abs(rand.Float64()),
+		LeftX:   -100,
+		RightX:  100,
+		TopY:    -100,
+		BottomY: 100,
 	}
 
-	numberOfCircles := 100000
+	numberOfCircles := 10000
 
 	start := time.Now()
 	circles := make([]world.Circle, numberOfCircles)
@@ -80,11 +88,50 @@ func main() {
 	elapsed = time.Now().Sub(start)
 	log.Println(elapsed)
 
-	data, err := json.MarshalIndent(quadtree, "", "  ")
-	if err != nil {
-		log.Fatal(err)
+	start = time.Now()
+	sampleCircles := [500]world.Circle{}
+	for i := 0; i < 500; i++ {
+		sampleCircles[i] = randomCircleWithinBounds(bounds)
+		//sampleCircles[i].Radius /= 1000000
 	}
-	fmt.Println(string(data))
+	elapsed = time.Now().Sub(start)
+	log.Println(elapsed)
+
+	start = time.Now()
+	sampleCirclesIntersectingCount := 0
+	for i := 0; i < 500; i++ {
+		if quadtree.Intersects(sampleCircles[i]) {
+			sampleCirclesIntersectingCount += 1
+		}
+	}
+	log.Println(sampleCirclesIntersectingCount)
+	elapsed = time.Now().Sub(start)
+	log.Println(elapsed)
+
+	// for i := 0; i < 100000; i++ {
+	// 	// if i%1 == 0 {
+	// 	// log.Printf("i=%d\n", i)
+	// 	// }
+	// 	c := randomCircleWithinBounds(bounds)
+	// 	if !quadtree.Intersects(c) {
+	// 		log.Printf("No intersection: %#v", c)
+	// 		//break
+	// 	}
+	// }
+
+	// data, err := json.MarshalIndent(quadtree, "", "  ")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Println(string(data))
+
+	fmt.Println(`<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">`)
+	for _, c := range circles {
+		fmt.Printf(`  <circle cx="%f" cy="%f" r="%f" style="fill: black; stroke-width: 0.01;" />`, c.Centre.X-bounds.LeftX, c.Centre.Y-bounds.TopY, c.Radius)
+		fmt.Println()
+	}
+	traversePrintSquares(quadtree, bounds, 1)
+	fmt.Println(`</svg>`)
 }
 
 func traverse(q world.Quadtree) int {
@@ -107,13 +154,29 @@ func traverseCountCircles(q world.Quadtree) int {
 	return n
 }
 
+func traversePrintSquares(q world.Quadtree, bounds world.Bounds, depth int) {
+	fmt.Printf(
+		`  <rect x="%f" y="%f" width="%f" height="%f" style="fill: transparent; stroke: red; stroke-width: %f;" />`,
+		q.Bounds.LeftX-bounds.LeftX,
+		q.Bounds.TopY-bounds.TopY,
+		q.Bounds.Width(),
+		q.Bounds.Height(),
+		1/float64(depth),
+	)
+	fmt.Println()
+	if q.Subtrees != nil {
+		for _, t := range *q.Subtrees {
+			traversePrintSquares(t, bounds, depth+1)
+		}
+	}
+}
+
 func computeComputations(q world.Quadtree, parentCircles []world.Circle) int {
 	n := 0
 
 	for _, parentCircle := range parentCircles {
 		for _, circle := range q.Circles {
 			if parentCircle.Intersects(circle) {
-				//if parentCircle.Bounds().Intersects(circle.Bounds()) && parentCircle.Intersects(circle) {
 				//fmt.Printf("quadtree intersection: %d x %d\n", circle.ID, parentCircle.ID)
 				//fmt.Printf("quadtree intersection: %d x %d\n", parentCircle.ID, circle.ID)
 				n += 2
@@ -123,7 +186,6 @@ func computeComputations(q world.Quadtree, parentCircles []world.Circle) int {
 
 	for i, circle := range q.Circles {
 		for j, circle2 := range q.Circles {
-			//if i != j && circle.Bounds().Intersects(circle2.Bounds()) && circle.Intersects(circle2) {
 			if i != j && circle.Intersects(circle2) {
 				//fmt.Printf("quadtree intersection: %d x %d\n", circle.ID, circle2.ID)
 				n += 1
@@ -145,10 +207,10 @@ func randomCircleWithinBounds(bounds world.Bounds) world.Circle {
 		circle := world.Circle{
 			ID: rand.Int(),
 			Centre: world.Point{
-				X: rand.Float64(),
-				Y: rand.Float64(),
+				X: (rand.Float64() - 0.5) * bounds.Width(),
+				Y: (rand.Float64() - 0.5) * bounds.Height(),
 			},
-			Radius: math.Abs(rand.Float64()),
+			Radius: math.Abs(rand.Float64()*math.Min(bounds.Width(), bounds.Height())) / 200,
 		}
 		if bounds.Contains(circle) {
 			return circle
