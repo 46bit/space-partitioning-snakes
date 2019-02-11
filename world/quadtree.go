@@ -50,7 +50,7 @@ func NewQuadtree(bounds Bounds, circles []Circle) Quadtree {
 // Subtrees *[4]Quadtree `json:"subtrees,omitempty"`
 func (q Quadtree) Intersects(c Circle) bool {
 	for _, c2 := range q.Circles {
-		if c2.Intersects(c) {
+		if c2.ID != c.ID && c2.Intersects(c) {
 			return true
 		}
 	}
