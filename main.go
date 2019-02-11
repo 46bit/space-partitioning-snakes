@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -48,13 +49,30 @@ func main() {
 		log.Printf("Circle into quadtree: %s\n", time.Now().Sub(start))
 
 		start = time.Now()
-		for id, snake := range snakes {
-			if snake.Collided(quadtree) {
-				log.Printf("Snake %d died\n", id)
-				delete(snakes, id)
-				delete(velocities, id)
-			}
+		var wg sync.WaitGroup
+		workerCount := 8
+		var mut sync.Mutex
+		for w := 0; w < workerCount; w++ {
+			wg.Add(1)
+			go func(w int) {
+				mut.Lock()
+				for id, snake := range snakes {
+					head := snake.Head
+					mut.Unlock()
+					if id%workerCount == w && quadtree.Intersects(head) {
+						log.Printf("Snake %d died\n", id)
+						mut.Lock()
+						delete(snakes, id)
+						delete(velocities, id)
+					} else {
+						mut.Lock()
+					}
+				}
+				mut.Unlock()
+				wg.Done()
+			}(w)
 		}
+		wg.Wait()
 		log.Printf("Snake collisions and deaths: %s\n", time.Now().Sub(start))
 
 		if f%10 == 0 {
