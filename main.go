@@ -49,30 +49,7 @@ func main() {
 		log.Printf("Circle into quadtree: %s\n", time.Now().Sub(start))
 
 		start = time.Now()
-		var wg sync.WaitGroup
-		workerCount := 8
-		var mut sync.Mutex
-		for w := 0; w < workerCount; w++ {
-			wg.Add(1)
-			go func(w int) {
-				mut.Lock()
-				for id, snake := range snakes {
-					head := snake.Head
-					mut.Unlock()
-					if id%workerCount == w && quadtree.Intersects(head) {
-						log.Printf("Snake %d died\n", id)
-						mut.Lock()
-						delete(snakes, id)
-						delete(velocities, id)
-					} else {
-						mut.Lock()
-					}
-				}
-				mut.Unlock()
-				wg.Done()
-			}(w)
-		}
-		wg.Wait()
+		snakes = collisions(snakes, quadtree)
 		log.Printf("Snake collisions and deaths: %s\n", time.Now().Sub(start))
 
 		if f%10 == 0 {
@@ -187,3 +164,56 @@ func randomSnake(length uint, bounds world.Bounds) (world.Snake, world.Velocity)
 			Angle: headAngle,
 		}
 }
+
+func collisionsOrig(workerCount int, snakes *map[int]world.Snake, velocities *map[int]world.Velocity, quadtree world.Quadtree) {
+	var wg sync.WaitGroup
+	var mut sync.Mutex
+	for w := 0; w < workerCount; w++ {
+		wg.Add(1)
+		go func(w int) {
+			mut.Lock()
+			for id, snake := range *snakes {
+				if id%workerCount != w {
+					continue
+				}
+				head := snake.Head
+				mut.Unlock()
+				intersects := quadtree.Intersects(head)
+				if !intersects {
+					mut.Lock()
+					continue
+				}
+				log.Printf("Snake %d died\n", id)
+				mut.Lock()
+				delete(*snakes, id)
+				delete(*velocities, id)
+			}
+			mut.Unlock()
+			wg.Done()
+		}(w)
+	}
+	wg.Wait()
+}
+
+func collisions(snakes map[int]world.Snake, quadtree world.Quadtree) map[int]world.Snake {
+	result := make(map[int]world.Snake, len(snakes))
+	var mut sync.Mutex
+	var wg sync.WaitGroup
+	for id, snake := range snakes {
+		wg.Add(1)
+		go func(id int, snake world.Snake) {
+			if !quadtree.Intersects(snake.Head) {
+				mut.Lock()
+				result[id] = snake
+				mut.Unlock()
+			}
+			wg.Done()
+		}(id, snake)
+	}
+	wg.Wait()
+	return result
+}
+
+// func sc(i <-chan world.Snake, o chan<- world.Snake, quadtree world.Quadtree) {
+
+// }
