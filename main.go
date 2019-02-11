@@ -24,47 +24,63 @@ func main() {
 	}
 
 	start := time.Now()
-	numberOfSnakes := 200
-	snakes := make([]world.Snake, numberOfSnakes)
-	snakeVelocities := make([]world.Velocity, numberOfSnakes)
+	numberOfSnakes := 500
+	snakes := map[int]world.Snake{}
+	velocities := map[int]world.Velocity{}
 	for i := 0; i < numberOfSnakes; i++ {
-		snakes[i], snakeVelocities[i] = randomSnake(uint(rand.Int63n(60)), bounds)
+		snake, velocity := randomSnake(uint(rand.Int63n(60)), bounds)
+		snakes[snake.ID] = snake
+		velocities[snake.ID] = velocity
 	}
-	log.Println(time.Now().Sub(start))
+	log.Printf("Random snakes and velocities: %s\n", time.Now().Sub(start))
 
-	for {
+	for f := 0; true; f++ {
 		start = time.Now()
 		circles := []world.Circle{}
-		for i := 0; i < numberOfSnakes; i++ {
-			circles = append(circles, snakes[i].Head)
-			circles = append(circles, snakes[i].Tail...)
+		for _, snake := range snakes {
+			circles = append(circles, snake.Head)
+			circles = append(circles, snake.Tail...)
 		}
-		log.Println(time.Now().Sub(start))
+		log.Printf("Snakes into circles: %s\n", time.Now().Sub(start))
 
 		start = time.Now()
 		quadtree := world.NewQuadtree(bounds, circles)
-		log.Println(time.Now().Sub(start))
+		log.Printf("Circle into quadtree: %s\n", time.Now().Sub(start))
 
 		start = time.Now()
-		for l := 0; l < 10; l++ {
-			s := `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">`
-			s += traversePrintAll(quadtree, bounds, 1, l)
-			s += `</svg>`
-			err := ioutil.WriteFile(fmt.Sprintf("levels-%d.svg", l), []byte(s), 0644)
-			if err != nil {
-				fmt.Errorf(err.Error())
+		for id, snake := range snakes {
+			if snake.Collided(quadtree) {
+				log.Printf("Snake %d died\n", id)
+				delete(snakes, id)
+				delete(velocities, id)
 			}
 		}
-		log.Println(time.Now().Sub(start))
+		log.Printf("Snake collisions and deaths: %s\n", time.Now().Sub(start))
 
-		time.Sleep(1000 * time.Millisecond)
+		if f%10 == 0 {
+			start = time.Now()
+			for l := 0; l < 10; l++ {
+				s := `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">`
+				s += traversePrintAll(quadtree, bounds, 1, l)
+				s += `</svg>`
+				err := ioutil.WriteFile(fmt.Sprintf("levels-%d.svg", l), []byte(s), 0644)
+				if err != nil {
+					fmt.Errorf(err.Error())
+				}
+			}
+			log.Printf("Drawing SVGs: %s\n", time.Now().Sub(start))
+
+			time.Sleep(1000 * time.Millisecond)
+		}
 
 		start = time.Now()
-		for i := 0; i < numberOfSnakes; i++ {
-			snakes[i] = world.ApplyVelocityToSnake(snakeVelocities[i], snakes[i], false)
-			snakeVelocities[i].Angle += 0.3 * (rand.Float64() - 0.5)
+		for id := range snakes {
+			snakes[id] = world.ApplyVelocityToSnake(velocities[id], snakes[id], false)
+			velocity := velocities[id]
+			velocity.Angle += 0.3 * (rand.Float64() - 0.5)
+			velocities[id] = velocity
 		}
-		log.Println(time.Now().Sub(start))
+		log.Printf("Apply velocities to snakes: %s\n", time.Now().Sub(start))
 	}
 }
 
@@ -100,13 +116,15 @@ func traversePrintAll(q world.Quadtree, bounds world.Bounds, depth, maxDepth int
 
 func randomCircleWithinBounds(bounds world.Bounds) world.Circle {
 	for {
+		// radius := math.Abs(rand.Float64()*math.Min(bounds.Width(), bounds.Height())) / 200,
+		radius := 0.4
 		circle := world.Circle{
 			ID: rand.Int(),
 			Centre: world.Point{
 				X: (rand.Float64() - 0.5) * bounds.Width(),
 				Y: (rand.Float64() - 0.5) * bounds.Height(),
 			},
-			Radius: math.Abs(rand.Float64()*math.Min(bounds.Width(), bounds.Height())) / 200,
+			Radius: radius,
 		}
 		if bounds.Contains(circle) {
 			return circle
