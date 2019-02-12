@@ -22,9 +22,10 @@ func (c Circle) Bounds() Bounds {
 func (c Circle) Intersects(c2 Circle) bool {
 	xDist := math.Abs(c2.Centre.X - c.Centre.X)
 	yDist := math.Abs(c2.Centre.Y - c.Centre.Y)
-	if xDist >= c.Radius || yDist >= c.Radius {
+	combinedRadii := math.Abs(c.Radius) + math.Abs(c2.Radius)
+	if xDist > combinedRadii || yDist > combinedRadii {
 		return false
 	}
 	dist := math.Hypot(xDist, yDist)
-	return dist <= c.Radius+c2.Radius
+	return dist <= combinedRadii
 }
