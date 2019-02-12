@@ -18,10 +18,10 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	bounds := world.Bounds{
-		LeftX:   -100,
-		RightX:  100,
-		TopY:    -100,
-		BottomY: 100,
+		LeftX:   -1000,
+		RightX:  1000,
+		TopY:    -1000,
+		BottomY: 1000,
 	}
 
 	start := time.Now()
@@ -29,7 +29,7 @@ func main() {
 	snakes := map[int]world.Snake{}
 	velocities := map[int]world.Velocity{}
 	for i := 0; i < numberOfSnakes; i++ {
-		snake, velocity := randomSnake(uint(rand.Int63n(60)), bounds)
+		snake, velocity := randomSnake(uint(rand.Int63n(160)), bounds)
 		snakes[snake.ID] = snake
 		velocities[snake.ID] = velocity
 	}
@@ -54,8 +54,8 @@ func main() {
 
 		if f%10 == 0 {
 			start = time.Now()
-			for l := 0; l < 10; l++ {
-				s := `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">`
+			for l := 0; l < 20; l++ {
+				s := `<svg viewBox="0 0 2000 2000" xmlns="http://www.w3.org/2000/svg">`
 				s += traversePrintAll(quadtree, bounds, 1, l)
 				s += `</svg>`
 				err := ioutil.WriteFile(fmt.Sprintf("levels-%d.svg", l), []byte(s), 0644)
