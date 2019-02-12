@@ -3,7 +3,7 @@ package main
 import (
 	//"encoding/json"
 	"fmt"
-	"github.com/46bit/circle-collision-detection/world"
+	"github.com/46bit/space-partitioning-snakes/world"
 	"io/ioutil"
 	"log"
 	"math"
@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 )
-
-//var randScaleFactor = 200.0
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -111,7 +109,6 @@ func traversePrintAll(q world.Quadtree, bounds world.Bounds, depth, maxDepth int
 
 func randomCircleWithinBounds(bounds world.Bounds) world.Circle {
 	for {
-		// radius := math.Abs(rand.Float64()*math.Min(bounds.Width(), bounds.Height())) / 200,
 		radius := 0.4
 		circle := world.Circle{
 			ID: rand.Int(),
@@ -129,7 +126,6 @@ func randomCircleWithinBounds(bounds world.Bounds) world.Circle {
 
 func randomSnake(length uint, bounds world.Bounds) (world.Snake, world.Velocity) {
 	head := randomCircleWithinBounds(bounds)
-	//distance := rand.Float64() * head.Radius * 1.5
 	distance := head.Radius * 1.5
 	angle := rand.Float64() * math.Pi
 	headAngle := angle
@@ -165,36 +161,6 @@ func randomSnake(length uint, bounds world.Bounds) (world.Snake, world.Velocity)
 		}
 }
 
-func collisionsOrig(workerCount int, snakes *map[int]world.Snake, velocities *map[int]world.Velocity, quadtree world.Quadtree) {
-	var wg sync.WaitGroup
-	var mut sync.Mutex
-	for w := 0; w < workerCount; w++ {
-		wg.Add(1)
-		go func(w int) {
-			mut.Lock()
-			for id, snake := range *snakes {
-				if id%workerCount != w {
-					continue
-				}
-				head := snake.Head
-				mut.Unlock()
-				intersects := quadtree.Intersects(head)
-				if !intersects {
-					mut.Lock()
-					continue
-				}
-				log.Printf("Snake %d died\n", id)
-				mut.Lock()
-				delete(*snakes, id)
-				delete(*velocities, id)
-			}
-			mut.Unlock()
-			wg.Done()
-		}(w)
-	}
-	wg.Wait()
-}
-
 func collisions(snakes map[int]world.Snake, quadtree world.Quadtree) map[int]world.Snake {
 	result := make(map[int]world.Snake, len(snakes))
 	var mut sync.Mutex
@@ -215,7 +181,3 @@ func collisions(snakes map[int]world.Snake, quadtree world.Quadtree) map[int]wor
 	wg.Wait()
 	return result
 }
-
-// func sc(i <-chan world.Snake, o chan<- world.Snake, quadtree world.Quadtree) {
-
-// }
