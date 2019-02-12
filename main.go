@@ -202,7 +202,9 @@ func collisions(snakes map[int]world.Snake, quadtree world.Quadtree) map[int]wor
 	for id, snake := range snakes {
 		wg.Add(1)
 		go func(id int, snake world.Snake) {
-			if !quadtree.Intersects(snake.Head) {
+			if !quadtree.Bounds.Intersects(snake.Head.Bounds()) || quadtree.Intersects(snake.Head) {
+				log.Printf("Snake %d died\n", snake.ID)
+			} else {
 				mut.Lock()
 				result[id] = snake
 				mut.Unlock()
